@@ -23,23 +23,9 @@ def _render_block(block: Block) -> str:
     return text
 
 
-def render_page_markdown(page: PageResult, book_name: str) -> str:
-    """Render one page to Markdown with front matter tying it to its source page."""
-    front_matter = "\n".join(
-        [
-            "---",
-            f"book: {book_name}",
-            f"page: {page.page_number}",
-            f"source_page: {page.page_number}",
-            f"printed_page: {page.printed_page if page.printed_page is not None else 'null'}",
-            f"ocr_engine: {page.ocr_engine}",
-            f"status: {page.status}",
-            "verified: false",
-            "---",
-        ]
-    )
-
-    lines = [front_matter, "", f"# الصفحة {page.page_number}", ""]
+def render_page_body(page: PageResult) -> str:
+    """Page content without front matter (used by both NNN.md and book.md)."""
+    lines = [f"# الصفحة {page.page_number}", ""]
 
     if page.status == "error":
         # An error page must never masquerade as an empty success.
@@ -60,7 +46,34 @@ def render_page_markdown(page: PageResult, book_name: str) -> str:
     lines.append("\n\n".join(body_parts))
 
     if footnotes:
-        lines += ["", "---", "", "## الحواشي", ""]
+        lines += ["", "***", "", "## الحواشي", ""]
         lines.append("\n\n".join(footnotes))
 
     return "\n".join(lines) + "\n"
+
+
+def render_page_markdown(page: PageResult, book_name: str) -> str:
+    """Render one page to Markdown with front matter tying it to its source page."""
+    front_matter = "\n".join(
+        [
+            "---",
+            f"book: {book_name}",
+            f"page: {page.page_number}",
+            f"source_page: {page.page_number}",
+            f"printed_page: {page.printed_page if page.printed_page is not None else 'null'}",
+            f"ocr_engine: {page.ocr_engine}",
+            f"status: {page.status}",
+            "verified: false",
+            "---",
+        ]
+    )
+    return front_matter + "\n\n" + render_page_body(page)
+
+
+def split_front_matter(markdown_text: str) -> tuple[str, str]:
+    """Split a page file into (front_matter, body). Tolerates missing front matter."""
+    if markdown_text.startswith("---\n"):
+        end = markdown_text.find("\n---\n", 4)
+        if end != -1:
+            return markdown_text[: end + 5], markdown_text[end + 5 :].lstrip("\n")
+    return "", markdown_text

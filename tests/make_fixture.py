@@ -25,13 +25,14 @@ ARABIC_HTML = """
 """
 
 
-def make_fixture(out_path: str | Path) -> Path:
+def make_fixture(out_path: str | Path, pages: int = 1) -> Path:
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     doc = pymupdf.open()
-    page = doc.new_page(width=595, height=842)  # A4
-    rect = pymupdf.Rect(50, 50, 545, 792)
-    page.insert_htmlbox(rect, ARABIC_HTML)
+    for i in range(1, pages + 1):
+        page = doc.new_page(width=595, height=842)  # A4
+        rect = pymupdf.Rect(50, 50, 545, 792)
+        page.insert_htmlbox(rect, ARABIC_HTML.replace("الأول", f"رقم {i}"))
     doc.save(out_path)
     doc.close()
     return out_path

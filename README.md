@@ -10,8 +10,10 @@
 
 ## الحالة
 
-المرحلة A منجزة: صفحة واحدة ← OCR ← `PageResult` ← Markdown، مع اختبارات.
-المراحل B–E (كتاب كامل، `book.md`، الواجهة، التقدم) لاحقة.
+- المرحلة A ✓ — صفحة واحدة ← OCR ← `PageResult` ← Markdown.
+- المرحلة B ✓ — كتاب كامل ← `pages/*.md` (صفحة بصفحة، فشل صفحة لا يوقف الكتاب، إعادة التشغيل تعالج الفاشلة فقط).
+- المرحلة C ✓ — `book.md` + `metadata.json` + `README.md` لكل كتاب.
+- المرحلتان D وE (واجهة FastAPI + التقدم) لاحقتان.
 
 ## التثبيت
 
@@ -21,14 +23,21 @@ pip install -r requirements.txt
 
 عند أول تشغيل يُنزّل PaddleOCR نماذجه مرة واحدة (من HuggingFace أو BOS — يلزم إنترنت لهذه المرة فقط)، ثم يعمل كل شيء Offline.
 
-## الاستخدام (المرحلة A)
+## الاستخدام
 
 ```bash
-# صفحة واحدة من PDF محلي (الملف الأصلي لا يُمس)
+# كتاب كامل (الملف الأصلي لا يُمس)
+python -m app.cli path/to/book.pdf
+
+# صفحة واحدة للتجربة
 python -m app.cli path/to/book.pdf --page 1
+
+# إعادة معالجة كل الصفحات حتى الناجحة
+python -m app.cli path/to/book.pdf --no-resume
 ```
 
-الناتج الوسيط في `data/work/<اسم-الكتاب>/pages/NNN/` — يشمل `source.png` و`ocr.json` و`result.md`.
+الناتج النهائي في `data/output/<اسم-الكتاب>/` (`book.md`, `metadata.json`, `pages/`)،
+والوسائط في `data/work/<اسم-الكتاب>/pages/NNN/` (`source.png`, `ocr.json`, `result.md`) وقابلة للحذف.
 
 ## الاختبار
 
@@ -47,7 +56,8 @@ app/
 ├── pdf.py           # قراءة PDF صفحة بصفحة (PyMuPDF)
 ├── markdown.py      # PageResult ← Markdown محافظ
 ├── pipeline.py      # خط معالجة الصفحة الواحدة
-├── cli.py           # تشغيل يدوي للمرحلة A
+├── book.py          # الكتاب كامل: pages/ + book.md + metadata.json + استئناف
+├── cli.py           # تشغيل يدوي (كتاب كامل أو صفحة)
 └── engines/
     ├── base.py                # واجهة OCREngine
     └── paddleocr_engine.py    # PP-StructureV3
