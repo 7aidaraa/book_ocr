@@ -3,9 +3,12 @@ pymupdf==1.28.2
 paddlepaddle==3.3.1
 paddleocr[doc-parser]==3.7.0   # doc-parser extras required by PP-StructureV3
 
+# Web UI (Phases D/E)
+fastapi==0.141.1
+uvicorn==0.52.3
+python-multipart==0.0.32
+
 # Tests
 pytest==9.1.1
+httpx==0.28.1
 
-# Later phases (D/E) — uncomment when the web UI lands:
-# fastapi
-# uvicorn

@@ -1,0 +1,161 @@
+"""FastAPI server (Phases D + E).
+
+Local-only web UI: upload a PDF, start conversion, poll progress.
+No accounts, no cloud, no telemetry. The book never leaves the machine —
+the "upload" goes to data/input/ on localhost.
+"""
+
+from __future__ import annotations
+
+import shutil
+import threading
+import uuid
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+
+from . import pdf
+from .book import process_book
+
+INPUT_DIR = Path("data/input")
+OUTPUT_DIR = Path("data/output")
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+
+# MVP: Arabic only; the API carries lang so more languages slot in later.
+SUPPORTED_LANGS = {"ar": "العربية"}
+
+app = FastAPI(title="Arabic Book OCR", docs_url=None, redoc_url=None)
+
+# in-memory job registry (MVP: one local user)
+_jobs: dict[str, dict] = {}
+_jobs_lock = threading.Lock()
+_engine = None
+_engine_lock = threading.Lock()
+
+
+def get_engine(lang: str):
+    """Shared engine instance; models load once per process. Overridable in tests."""
+    global _engine
+    with _engine_lock:
+        if _engine is None:
+            from .engines.paddleocr_engine import PaddleOCREngine
+
+            _engine = PaddleOCREngine(lang=lang)
+        return _engine
+
+
+@app.get("/api/languages")
+def languages() -> dict:
+    return {"languages": SUPPORTED_LANGS, "default": "ar"}
+
+
+@app.post("/api/upload")
+async def upload(file: UploadFile) -> dict:
+    if not (file.filename or "").lower().endswith(".pdf"):
+        raise HTTPException(400, "الملف يجب أن يكون PDF")
+
+    book_id = uuid.uuid4().hex[:12]
+    dest_dir = INPUT_DIR / book_id
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / Path(file.filename).name
+
+    with dest.open("wb") as out:
+        shutil.copyfileobj(file.file, out)
+
+    try:
+        page_count = pdf.get_page_count(dest)
+    except Exception as exc:
+        shutil.rmtree(dest_dir, ignore_errors=True)
+        raise HTTPException(400, f"تعذرت قراءة PDF: {exc}")
+
+    with _jobs_lock:
+        _jobs[book_id] = {
+            "book_id": book_id,
+            "filename": dest.name,
+            "book_name": dest.stem,
+            "pdf_path": str(dest),
+            "size_bytes": dest.stat().st_size,
+            "page_count": page_count,
+            "state": "uploaded",       # uploaded | running | done | failed
+            "current_page": 0,
+            "message": "",
+            "ocr_engine": "paddleocr",
+            "failed_pages": [],
+            "output_dir": None,
+            "error": None,
+        }
+    return _jobs[book_id]
+
+
+def _run_job(book_id: str, lang: str) -> None:
+    job = _jobs[book_id]
+
+    def on_progress(page: int, total: int, message: str) -> None:
+        job["current_page"] = page
+        job["message"] = message
+
+    try:
+        engine = app.state.engine_factory(lang)  # type: ignore[attr-defined]
+        job["ocr_engine"] = engine.name
+        metadata = process_book(
+            job["pdf_path"], engine,
+            book_name=job["book_name"],
+            output_root=OUTPUT_DIR,
+            on_progress=on_progress,
+        )
+        job["failed_pages"] = metadata["failed_pages"]
+        job["output_dir"] = str(OUTPUT_DIR / job["book_name"])
+        job["state"] = "done"
+        job["message"] = "اكتمل التحويل"
+    except Exception as exc:
+        job["state"] = "failed"
+        job["error"] = f"{type(exc).__name__}: {exc}"
+        job["message"] = "فشل التحويل"
+
+
+app.state.engine_factory = get_engine
+
+
+@app.post("/api/convert/{book_id}")
+def convert(book_id: str, lang: str = "ar") -> dict:
+    if lang not in SUPPORTED_LANGS:
+        raise HTTPException(400, f"لغة غير مدعومة: {lang}")
+    with _jobs_lock:
+        job = _jobs.get(book_id)
+        if job is None:
+            raise HTTPException(404, "لا يوجد كتاب بهذا المعرف")
+        if job["state"] == "running":
+            raise HTTPException(409, "التحويل جارٍ بالفعل")
+        job["state"] = "running"
+        job["message"] = "بدء المعالجة..."
+
+    threading.Thread(target=_run_job, args=(book_id, lang), daemon=True).start()
+    return {"book_id": book_id, "state": "running"}
+
+
+@app.get("/api/status/{book_id}")
+def status(book_id: str) -> dict:
+    job = _jobs.get(book_id)
+    if job is None:
+        raise HTTPException(404, "لا يوجد كتاب بهذا المعرف")
+    return job
+
+
+@app.get("/api/result/{book_id}/book.md")
+def result_book_md(book_id: str) -> FileResponse:
+    job = _jobs.get(book_id)
+    if job is None or job["state"] != "done":
+        raise HTTPException(404, "الناتج غير جاهز")
+    path = Path(job["output_dir"]) / "book.md"
+    return FileResponse(path, media_type="text/markdown; charset=utf-8",
+                        filename="book.md")
+
+
+@app.get("/")
+def index() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
