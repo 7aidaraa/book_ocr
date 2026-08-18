@@ -73,3 +73,8 @@ code {
 }
 
 .error { color: #a33a2a; font-weight: 600; }
+
+.books-title { font-size: 1rem; margin-bottom: .5rem; }
+#books-list { padding-inline-start: 1.2rem; }
+#books-list a { color: #1f6f54; font-weight: 600; }
+.book-meta { color: #6b675e; font-size: .85rem; }
