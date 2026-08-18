@@ -77,6 +77,8 @@ async function poll() {
           : "اكتمل التحويل بنجاح ✓";
         $("output-dir").textContent = s.output_dir;
         $("download-link").href = `/api/result/${bookId}/book.md`;
+        $("reader-link").href = `/reader/${encodeURIComponent(s.book_name)}`;
+        loadBooks();
       } else {
         showError("فشل التحويل: " + (s.error || ""));
       }
@@ -85,3 +87,30 @@ async function poll() {
     /* transient polling errors are ignored */
   }
 }
+
+async function loadBooks() {
+  try {
+    const res = await fetch("/api/books");
+    if (!res.ok) return;
+    const { books } = await res.json();
+    const list = $("books-list");
+    list.innerHTML = "";
+    for (const b of books) {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.href = b.reader_url;
+      a.textContent = b.book_name;
+      a.target = "_blank";
+      li.appendChild(a);
+      const info = document.createElement("span");
+      info.className = "book-meta";
+      info.textContent = ` — ${b.page_count} صفحة`
+        + (b.failed_pages.length ? ` (فشل ${b.failed_pages.length})` : "");
+      li.appendChild(info);
+      list.appendChild(li);
+    }
+    $("books-section").hidden = books.length === 0;
+  } catch (_) { /* offline list is best-effort */ }
+}
+
+loadBooks();

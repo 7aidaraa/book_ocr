@@ -89,3 +89,34 @@ def test_languages_endpoint(client):
     data = client.get("/api/languages").json()
     assert data["default"] == "ar"
     assert "ar" in data["languages"]
+
+
+def _convert_to_done(client, tmp_path):
+    book_id = _upload(client, tmp_path).json()["book_id"]
+    client.post(f"/api/convert/{book_id}")
+    for _ in range(100):
+        s = client.get(f"/api/status/{book_id}").json()
+        if s["state"] in ("done", "failed"):
+            return s
+        time.sleep(0.05)
+    return s
+
+
+def test_reader_and_books_list(client, tmp_path):
+    s = _convert_to_done(client, tmp_path)
+    assert s["state"] == "done"
+
+    books = client.get("/api/books").json()["books"]
+    assert len(books) == 1
+    assert books[0]["book_name"] == "كتاب"
+    assert books[0]["page_count"] == 2
+
+    page = client.get(books[0]["reader_url"])
+    assert page.status_code == 200
+    assert "نص تجريبي." in page.text
+    assert 'dir="rtl"' in page.text
+
+
+def test_reader_rejects_missing_and_traversal(client, tmp_path):
+    assert client.get("/reader/غير-موجود").status_code == 404
+    assert client.get("/reader/%2e%2e%2fetc").status_code == 404

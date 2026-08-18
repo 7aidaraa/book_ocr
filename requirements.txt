@@ -7,6 +7,7 @@ paddleocr[doc-parser]==3.7.0   # doc-parser extras required by PP-StructureV3
 fastapi==0.141.1
 uvicorn==0.52.3
 python-multipart==0.0.32
+markdown==3.10.3               # server-side reader rendering (offline)
 
 # Tests
 pytest==9.1.1

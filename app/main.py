@@ -12,12 +12,15 @@ import threading
 import uuid
 from pathlib import Path
 
+import json
+
 from fastapi import FastAPI, HTTPException, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import pdf
 from .book import process_book
+from .reader import render_book_html
 
 INPUT_DIR = Path("data/input")
 OUTPUT_DIR = Path("data/output")
@@ -151,6 +154,46 @@ def result_book_md(book_id: str) -> FileResponse:
     path = Path(job["output_dir"]) / "book.md"
     return FileResponse(path, media_type="text/markdown; charset=utf-8",
                         filename="book.md")
+
+
+def _safe_book_dir(book_name: str) -> Path:
+    """Resolve a converted book's output dir; reject path tricks."""
+    if not book_name or any(s in book_name for s in ("/", "\\", "..", "\0")):
+        raise HTTPException(404, "كتاب غير موجود")
+    book_dir = OUTPUT_DIR / book_name
+    if not (book_dir / "book.md").exists():
+        raise HTTPException(404, "كتاب غير موجود")
+    return book_dir
+
+
+@app.get("/api/books")
+def list_books() -> dict:
+    """Previously converted books (survive server restarts)."""
+    books = []
+    if OUTPUT_DIR.exists():
+        for book_dir in sorted(OUTPUT_DIR.iterdir()):
+            meta_file = book_dir / "metadata.json"
+            if not (book_dir / "book.md").exists() or not meta_file.exists():
+                continue
+            try:
+                meta = json.loads(meta_file.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            books.append({
+                "book_name": meta.get("book_name", book_dir.name),
+                "page_count": meta.get("page_count"),
+                "processed_at": meta.get("processed_at"),
+                "failed_pages": meta.get("failed_pages", []),
+                "reader_url": f"/reader/{book_dir.name}",
+            })
+    return {"books": books}
+
+
+@app.get("/reader/{book_name}")
+def reader(book_name: str) -> HTMLResponse:
+    book_dir = _safe_book_dir(book_name)
+    text = (book_dir / "book.md").read_text(encoding="utf-8")
+    return HTMLResponse(render_book_html(text, book_name))
 
 
 @app.get("/")
