@@ -19,7 +19,7 @@
 pip install -r requirements.txt
 ```
 
-عند أول تشغيل يُنزّل PaddleOCR نماذجه مرة واحدة، ثم يعمل كل شيء Offline.
+عند أول تشغيل يُنزّل PaddleOCR نماذجه مرة واحدة (من HuggingFace أو BOS — يلزم إنترنت لهذه المرة فقط)، ثم يعمل كل شيء Offline.
 
 ## الاستخدام (المرحلة A)
 

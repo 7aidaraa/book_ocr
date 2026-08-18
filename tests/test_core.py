@@ -134,6 +134,11 @@ def test_paddleocr_engine_on_fixture(fixture_pdf, tmp_path):
 
     engine = PaddleOCREngine(lang="ar")
     result, md = process_page(fixture_pdf, 1, engine, work_dir=tmp_path, dpi=200)
+    if result.status == "error" and any(
+        s in (result.error or "")
+        for s in ("model hosting", "network", "dependency error")
+    ):
+        pytest.skip(f"models unavailable in this environment: {result.error}")
     assert result.status == "ok", result.error
     assert result.blocks, "expected at least one block from PP-StructureV3"
     text = " ".join(b.text for b in result.blocks)
