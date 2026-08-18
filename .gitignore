@@ -1,5 +1,9 @@
 .claude/
-node_modules/
-package.json
-package-lock.json
-screen-*.png
+__pycache__/
+*.pyc
+.venv/
+venv/
+data/input/
+data/work/
+data/output/
+.pytest_cache/

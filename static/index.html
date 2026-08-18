@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>تحويل الكتب العربية إلى Markdown</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="card">
+    <h1>تحويل الكتب العربية إلى Markdown</h1>
+    <p class="sub">كل المعالجة محلية على جهازك — لا يُرفع الكتاب إلى الإنترنت.</p>
+
+    <section id="pick-section">
+      <label class="btn" for="pdf-input">اختيار ملف PDF</label>
+      <input type="file" id="pdf-input" accept="application/pdf" hidden>
+
+      <div class="field">
+        <span class="label">اللغة:</span>
+        <select id="lang-select"><option value="ar">العربية</option></select>
+      </div>
+    </section>
+
+    <section id="file-info" hidden>
+      <div class="field"><span class="label">الملف:</span> <span id="file-name"></span></div>
+      <div class="field"><span class="label">الحجم:</span> <span id="file-size"></span></div>
+      <div class="field"><span class="label">عدد الصفحات:</span> <span id="page-count"></span></div>
+      <button class="btn primary" id="start-btn">بدء التحويل</button>
+    </section>
+
+    <section id="progress-section" hidden>
+      <div class="field"><span class="label">التقدم:</span></div>
+      <div class="bar"><div class="bar-fill" id="bar-fill"></div></div>
+      <div class="field"><span id="progress-count">0 / 0</span></div>
+      <div class="field"><span class="label">الحالة:</span> <span id="status-text"></span></div>
+      <div class="field"><span class="label">محرك OCR:</span> <span id="engine-name"></span></div>
+    </section>
+
+    <section id="done-section" hidden>
+      <p id="done-text"></p>
+      <p class="field"><span class="label">مجلد النتائج:</span> <code id="output-dir"></code></p>
+      <a class="btn" id="download-link" download>تنزيل book.md</a>
+    </section>
+
+    <p class="error" id="error-text" hidden></p>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
