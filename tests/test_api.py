@@ -122,6 +122,42 @@ def test_reader_rejects_missing_and_traversal(client, tmp_path):
     assert client.get("/reader/%2e%2e%2fetc").status_code == 404
 
 
+def test_selftest_reports_engine_health(client):
+    r = client.get("/api/selftest")
+    assert r.status_code == 200
+    d = r.json()
+    assert d["engine"] == "mock"
+    assert d["status"] == "ok"
+    assert "نص تجريبي." in d["text"]
+
+
+def test_selftest_reports_engine_failure(client, monkeypatch):
+    import app.main as m
+
+    class Broken(MockEngine):
+        def process_image(self, image_path):
+            raise RuntimeError("engine exploded")
+
+    monkeypatch.setattr(m.app.state, "engine_factory", lambda lang: Broken())
+    d = client.get("/api/selftest").json()
+    assert d["ok"] is False
+    assert "engine exploded" in d["error"]
+
+
+def test_failed_conversion_exposes_first_error(client, tmp_path, monkeypatch):
+    import app.main as m
+
+    class Broken(MockEngine):
+        def process_image(self, image_path):
+            raise RuntimeError("engine exploded")
+
+    monkeypatch.setattr(m.app.state, "engine_factory", lambda lang: Broken())
+    s = _convert_to_done(client, tmp_path)
+    assert s["state"] == "done"
+    assert len(s["failed_pages"]) == 2
+    assert "engine exploded" in s["first_error"]
+
+
 def test_hub_gpu_session_flow(client, monkeypatch):
     monkeypatch.setenv("HUB_MODE", "1")
     monkeypatch.setenv("HUB_TOKEN", "secret1")

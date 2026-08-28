@@ -157,6 +157,41 @@ code {
 }
 
 .error { color: var(--red); font-weight: 700; }
+.fail-reason {
+  background: #fbf0ee;
+  border: 1px solid #e2beb5;
+  border-radius: 8px;
+  color: var(--red);
+  padding: .6rem .8rem;
+  font-size: .82rem;
+  margin: .6rem 0;
+  direction: ltr;
+  text-align: left;
+  word-break: break-word;
+}
+.btn.subtle {
+  background: none;
+  border: 1px dashed var(--line);
+  color: var(--ink-soft);
+  font-size: .85rem;
+  padding: .4rem 1rem;
+  width: 100%;
+}
+.selftest-out {
+  background: #23211c;
+  color: #e8e3d6;
+  border-radius: 8px;
+  padding: .8rem;
+  font-size: .72rem;
+  line-height: 1.6;
+  margin-top: .6rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  direction: ltr;
+  text-align: left;
+  max-height: 320px;
+  overflow: auto;
+}
 .upload-status { color: var(--green-deep); font-weight: 700; margin: .8rem 0; font-variant-numeric: tabular-nums; }
 
 #done-section {
