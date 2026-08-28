@@ -20,6 +20,7 @@ def render_page_image(
     page_number: int,
     out_path: str | Path,
     dpi: int = 300,
+    grayscale: bool = False,
 ) -> Path:
     """Render one page (1-based) to a PNG file and return its path.
 
@@ -35,6 +36,7 @@ def render_page_image(
                 f"page {page_number} out of range 1..{doc.page_count}"
             )
         page = doc[page_number - 1]
-        pix = page.get_pixmap(dpi=dpi)
+        colorspace = pymupdf.csGRAY if grayscale else pymupdf.csRGB
+        pix = page.get_pixmap(dpi=dpi, colorspace=colorspace)
         pix.save(out_path)
     return out_path

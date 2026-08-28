@@ -116,8 +116,9 @@ def _run_job(book_id: str, lang: str) -> None:
             job["pdf_path"], engine,
             book_name=job["book_name"],
             output_root=OUTPUT_DIR,
-            # lower DPI keeps page images within small hosts' memory limits
+            # lower DPI / grayscale keep small hosts fast and within memory
             dpi=int(_os.environ.get("OCR_DPI", "300")),
+            grayscale=_os.environ.get("OCR_GRAYSCALE", "0") == "1",
             on_progress=on_progress,
         )
         job["failed_pages"] = metadata["failed_pages"]

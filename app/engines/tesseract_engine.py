@@ -33,8 +33,15 @@ class TesseractEngine(OCREngine):
             return "unknown"
 
     def process_image(self, image_path: str | Path) -> list[Block]:
+        import os
+
         import pytesseract
         from pytesseract import Output
+
+        # On single-core hosts tesseract's OpenMP threads fight over the one
+        # core and slow it down; one thread is fastest there.
+        if os.cpu_count() == 1:
+            os.environ.setdefault("OMP_THREAD_LIMIT", "1")
 
         data = pytesseract.image_to_data(
             str(image_path), lang=self._tess_lang, output_type=Output.DICT

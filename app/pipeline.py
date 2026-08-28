@@ -25,6 +25,7 @@ def process_page(
     book_name: str | None = None,
     work_dir: str | Path | None = None,
     dpi: int = 300,
+    grayscale: bool = False,
 ) -> tuple[PageResult, str]:
     """Process one page; returns (PageResult, markdown).
 
@@ -38,7 +39,8 @@ def process_page(
 
     try:
         image_path = pdf.render_page_image(
-            pdf_path, page_number, page_dir / "source.png", dpi=dpi
+            pdf_path, page_number, page_dir / "source.png",
+            dpi=dpi, grayscale=grayscale,
         )
         blocks = engine.process_image(image_path)
         result = PageResult(
