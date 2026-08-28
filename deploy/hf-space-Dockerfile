@@ -1,0 +1,32 @@
+# ملف واحد فقط — انسخه كاملًا والصقه في ملف اسمه Dockerfile داخل Space على
+# Hugging Face (نوع Docker). لا تحتاج أي ملف آخر: هذا الملف يجلب المشروع
+# من GitHub ويشغّله.
+#
+# لتحديث المنصة لاحقًا بعد أي تعديل على GitHub:
+# Settings ← Factory rebuild
+
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git ca-certificates libgl1 libglib2.0-0 libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m -u 1000 user
+USER user
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH \
+    PYTHONUNBUFFERED=1
+WORKDIR /home/user/app
+
+RUN git clone --depth 1 https://github.com/7aidaraa/book_ocr .
+
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+RUN python -c "\
+from paddleocr import PPStructureV3; \
+PPStructureV3(lang='ar', use_doc_orientation_classify=True, use_doc_unwarping=False, \
+use_table_recognition=True, use_formula_recognition=False)" || true
+
+ENV HOST=0.0.0.0 PORT=7860
+EXPOSE 7860
+CMD ["python", "run.py"]
