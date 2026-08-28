@@ -7,5 +7,7 @@ services:
     envVars:
       - key: OCR_ENGINE
         value: tesseract
+      - key: OCR_DPI
+        value: "200"
       - key: PORT
         value: "8000"

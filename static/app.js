@@ -15,25 +15,65 @@ function fmtSize(bytes) {
   return Math.max(1, Math.round(bytes / 1024)) + " ك.ب";
 }
 
+function setUploadStatus(msg) {
+  $("upload-status").textContent = msg;
+  $("upload-status").hidden = !msg;
+}
+
+// XHR rather than fetch: it reports upload progress, which matters for
+// large books on a slow phone connection.
+function uploadFile(file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const form = new FormData();
+    form.append("file", file);
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/upload");
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      let body;
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch (_) {
+        reject(new Error(`الخادم ردّ بحالة ${xhr.status} بدل بيانات صالحة`));
+        return;
+      }
+      if (xhr.status === 200) resolve(body);
+      else reject(new Error(body.detail || `حالة ${xhr.status}`));
+    };
+    xhr.onerror = () => reject(new Error("انقطع الاتصال بالخادم"));
+    xhr.ontimeout = () => reject(new Error("انتهت مهلة الرفع"));
+    xhr.timeout = 15 * 60 * 1000;
+    xhr.send(form);
+  });
+}
+
 $("pdf-input").addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   showError("");
+  $("file-info").hidden = true;
+  $("progress-section").hidden = true;
+  $("done-section").hidden = true;
+  setUploadStatus(`جارٍ رفع «${file.name}» (${fmtSize(file.size)})... 0%`);
 
-  const form = new FormData();
-  form.append("file", file);
   try {
-    const res = await fetch("/api/upload", { method: "POST", body: form });
-    if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
-    const info = await res.json();
+    const info = await uploadFile(file, (pct) =>
+      setUploadStatus(
+        pct < 100
+          ? `جارٍ رفع «${file.name}» (${fmtSize(file.size)})... ${pct}%`
+          : "اكتمل الرفع — يقرأ الخادم الملف..."
+      )
+    );
+    setUploadStatus("");
     bookId = info.book_id;
     $("file-name").textContent = info.filename;
     $("file-size").textContent = fmtSize(info.size_bytes);
     $("page-count").textContent = info.page_count;
     $("file-info").hidden = false;
-    $("progress-section").hidden = true;
-    $("done-section").hidden = true;
   } catch (err) {
+    setUploadStatus("");
     showError("فشل رفع الملف: " + err.message);
   }
 });
