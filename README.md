@@ -25,6 +25,14 @@ python run.py
 
 ثم افتح: `http://127.0.0.1:8000`
 
+## أسرع تشغيل على Windows (بلا أوامر)
+
+1. ثبّت Python من python.org — فعّل خيار `Add python.exe to PATH` أثناء التثبيت (مرة واحدة).
+2. نزّل المشروع ZIP: <https://github.com/7aidaraa/book_ocr/archive/refs/heads/main.zip> وفك الضغط.
+3. انقر نقرًا مزدوجًا على `start.bat` — أول مرة يثبّت كل شيء تلقائيًا (~1GB)، ثم يفتح المتصفح على `http://127.0.0.1:8000` وحده.
+
+في المرات التالية: نقرة على `start.bat` فقط.
+
 ## التثبيت
 
 ```bash
