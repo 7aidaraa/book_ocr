@@ -14,8 +14,10 @@ from pathlib import Path
 
 import json
 import os as _os
+import re as _re
+import time as _time
 
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import Body, FastAPI, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -62,6 +64,40 @@ def get_engine(lang: str):
 @app.get("/api/languages")
 def languages() -> dict:
     return {"languages": SUPPORTED_LANGS, "default": "ar"}
+
+
+# ---- hub mode: Render acts as the fixed front door; a Colab GPU session
+# ---- registers its temporary public URL here and heartbeats every minute.
+
+COLAB_URL = ("https://colab.research.google.com/github/7aidaraa/book_ocr/"
+             "blob/main/colab/arabic_book_ocr.ipynb")
+_GPU_URL_RE = _re.compile(r"^https://[-\w]+\.(trycloudflare\.com|ngrok-free\.app)/?$")
+_gpu = {"url": None, "ts": 0.0}
+
+
+@app.get("/api/config")
+def config() -> dict:
+    return {
+        "hub_mode": _os.environ.get("HUB_MODE", "0") == "1",
+        "colab_url": COLAB_URL,
+    }
+
+
+@app.post("/api/gpu-session")
+def register_gpu_session(data: dict = Body(...)) -> dict:
+    if data.get("token") != _os.environ.get("HUB_TOKEN", "kitab-hub"):
+        raise HTTPException(403, "رمز غير صحيح")
+    url = str(data.get("url", ""))
+    if not _GPU_URL_RE.match(url):
+        raise HTTPException(400, "رابط غير مقبول")
+    _gpu["url"], _gpu["ts"] = url.rstrip("/"), _time.time()
+    return {"ok": True}
+
+
+@app.get("/api/gpu-session")
+def gpu_session_status() -> dict:
+    online = bool(_gpu["url"]) and (_time.time() - _gpu["ts"] < 180)
+    return {"online": online, "url": _gpu["url"] if online else None}
 
 
 @app.post("/api/upload")

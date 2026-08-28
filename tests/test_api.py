@@ -122,6 +122,30 @@ def test_reader_rejects_missing_and_traversal(client, tmp_path):
     assert client.get("/reader/%2e%2e%2fetc").status_code == 404
 
 
+def test_hub_gpu_session_flow(client, monkeypatch):
+    monkeypatch.setenv("HUB_MODE", "1")
+    monkeypatch.setenv("HUB_TOKEN", "secret1")
+    import app.main as m
+    monkeypatch.setattr(m, "_gpu", {"url": None, "ts": 0.0})
+
+    assert client.get("/api/config").json()["hub_mode"] is True
+    assert client.get("/api/gpu-session").json() == {"online": False, "url": None}
+
+    # wrong token rejected; bad URL rejected
+    r = client.post("/api/gpu-session",
+                    json={"url": "https://x.trycloudflare.com", "token": "nope"})
+    assert r.status_code == 403
+    r = client.post("/api/gpu-session",
+                    json={"url": "https://evil.example.com", "token": "secret1"})
+    assert r.status_code == 400
+
+    r = client.post("/api/gpu-session",
+                    json={"url": "https://abc-def.trycloudflare.com/", "token": "secret1"})
+    assert r.status_code == 200
+    s = client.get("/api/gpu-session").json()
+    assert s == {"online": True, "url": "https://abc-def.trycloudflare.com"}
+
+
 def test_zip_download_and_forget(client, tmp_path):
     s = _convert_to_done(client, tmp_path)
     assert s["state"] == "done"
