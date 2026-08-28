@@ -184,6 +184,27 @@ code {
 #books-list a:hover { text-decoration: underline; }
 .book-meta { color: var(--ink-soft); font-size: .82rem; }
 
+#hub-section {
+  background: #eef4ef;
+  border: 1px solid #cfe0d4;
+  border-radius: 12px;
+  padding: 1.1rem 1.2rem;
+}
+.hub-steps {
+  padding-inline-start: 1.25rem;
+  font-size: .92rem;
+  margin: .4rem 0 .8rem;
+}
+.hub-steps li { margin: .25rem 0; }
+.hub-note {
+  color: var(--ink-soft);
+  font-size: .82rem;
+  border-top: 1px dashed #cfe0d4;
+  margin-top: .9rem;
+  padding-top: .7rem;
+}
+#hub-section .btn { width: 100%; display: block; text-align: center; }
+
 footer.tag {
   text-align: center;
   color: var(--ink-soft);

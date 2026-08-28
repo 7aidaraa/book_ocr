@@ -13,5 +13,9 @@ services:
         value: "1"
       - key: OMP_THREAD_LIMIT
         value: "1"
+      - key: HUB_MODE
+        value: "1"
+      - key: HUB_TOKEN
+        value: "kitab-hub"
       - key: PORT
         value: "8000"

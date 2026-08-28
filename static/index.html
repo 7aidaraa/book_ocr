@@ -11,6 +11,24 @@
     <h1>تحويل الكتب العربية إلى Markdown</h1>
     <p class="sub">المعالجة تجري على الخادم الذي يشغّل المنصة — جهازك محليًا، أو الجلسة السحابية إن شغّلتها هناك.</p>
 
+    <section id="hub-section" hidden>
+      <div id="hub-online" hidden>
+        <p class="field">⚡ <span class="label">المنصة السريعة (GPU) شغّالة الآن</span></p>
+        <a class="btn primary" id="hub-enter" target="_blank">الدخول إلى المنصة السريعة ⚡</a>
+      </div>
+      <div id="hub-offline" hidden>
+        <p class="field"><span class="label">للكتب الكبيرة — المسار السريع (GPU):</span></p>
+        <ol class="hub-steps">
+          <li>اضغط «فتح Colab» بالأسفل.</li>
+          <li>هناك: <bdo dir="ltr">Runtime ← Change runtime type ← T4 GPU ← Save</bdo>.</li>
+          <li>شغّل الخلايا الثلاث بالترتيب (▶).</li>
+          <li>ارجع إلى هذه الصفحة — زر الدخول سيظهر هنا تلقائيًا.</li>
+        </ol>
+        <a class="btn" id="hub-colab" target="_blank">فتح Colab 🚀</a>
+      </div>
+      <p class="hub-note">أو حوّل مباشرة هنا بالأسفل — أبطأ، يناسب الكتيبات الصغيرة.</p>
+    </section>
+
     <section id="pick-section">
       <label class="btn" for="pdf-input">اختيار ملف PDF</label>
       <input type="file" id="pdf-input" accept="application/pdf" hidden>

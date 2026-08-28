@@ -214,3 +214,29 @@ async function loadBooks() {
 }
 
 loadBooks();
+
+// ---- hub mode: this deployment is the fixed front door; show the live
+// ---- GPU session entry when a Colab session has registered itself.
+async function refreshHub() {
+  try {
+    const res = await fetch("/api/gpu-session");
+    if (!res.ok) return;
+    const s = await res.json();
+    $("hub-online").hidden = !s.online;
+    $("hub-offline").hidden = s.online;
+    if (s.online) $("hub-enter").href = s.url;
+  } catch (_) { /* best-effort */ }
+}
+
+(async () => {
+  try {
+    const res = await fetch("/api/config");
+    if (!res.ok) return;
+    const cfg = await res.json();
+    if (!cfg.hub_mode) return;
+    $("hub-colab").href = cfg.colab_url;
+    $("hub-section").hidden = false;
+    refreshHub();
+    setInterval(refreshHub, 10000);
+  } catch (_) { /* non-hub deployments just skip this */ }
+})();
