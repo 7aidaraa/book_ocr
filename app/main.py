@@ -13,6 +13,7 @@ import uuid
 from pathlib import Path
 
 import json
+import os as _os
 
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
@@ -39,13 +40,22 @@ _engine_lock = threading.Lock()
 
 
 def get_engine(lang: str):
-    """Shared engine instance; models load once per process. Overridable in tests."""
+    """Shared engine instance; models load once per process. Overridable in tests.
+
+    OCR_ENGINE=tesseract selects the lightweight engine (for small hosts);
+    default is paddleocr (PP-StructureV3).
+    """
     global _engine
     with _engine_lock:
         if _engine is None:
-            from .engines.paddleocr_engine import PaddleOCREngine
+            if _os.environ.get("OCR_ENGINE", "paddleocr").lower() == "tesseract":
+                from .engines.tesseract_engine import TesseractEngine
 
-            _engine = PaddleOCREngine(lang=lang)
+                _engine = TesseractEngine(lang=lang)
+            else:
+                from .engines.paddleocr_engine import PaddleOCREngine
+
+                _engine = PaddleOCREngine(lang=lang)
         return _engine
 
 

@@ -125,6 +125,28 @@ def test_process_page_failure_recorded_not_raised(fixture_pdf, tmp_path):
     assert "فشلت معالجة هذه الصفحة" in md
 
 
+# ---------- Tesseract integration (optional) ----------
+
+@pytest.mark.slow
+def test_tesseract_engine_on_fixture(fixture_pdf, tmp_path):
+    pytest.importorskip("pytesseract", reason="pytesseract not installed")
+    import shutil as _sh
+
+    if not _sh.which("tesseract"):
+        pytest.skip("tesseract binary not installed")
+
+    from app.engines.tesseract_engine import TesseractEngine
+
+    engine = TesseractEngine(lang="ar")
+    result, md = process_page(fixture_pdf, 1, engine, work_dir=tmp_path, dpi=300)
+    assert result.status == "ok", result.error
+    assert result.blocks
+    text = " ".join(b.text for b in result.blocks)
+    assert any("؀" <= ch <= "ۿ" for ch in text)
+    # faithful smoke check on a known word from the fixture
+    assert "العلم" in text
+
+
 # ---------- PaddleOCR integration (optional) ----------
 
 @pytest.mark.slow
