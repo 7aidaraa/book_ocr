@@ -25,6 +25,20 @@ python run.py
 
 ثم افتح: `http://127.0.0.1:8000`
 
+## نشر المنصة على رابط دائم (Hugging Face Spaces — مجاني)
+
+يعطيك رابطًا ثابتًا بواجهة كاملة تفتح من الهاتف بلا أي تثبيت.
+
+1. أنشئ Space جديدًا: <https://huggingface.co/new-space> — اختر **Docker ← Blank**، والرؤية **Private**.
+2. من تبويب **Files ← + Add file ← Create a new file**، سمِّ الملف `Dockerfile`، والصق فيه محتوى
+   [`deploy/hf-space-Dockerfile`](deploy/hf-space-Dockerfile) ثم **Commit**.
+3. انتظر البناء (~10 دقائق أول مرة) ← يفتح الرابط على واجهة المنصة.
+
+بعد أي تحديث هنا: **Settings ← Factory rebuild**.
+
+⚠ ملاحظتان: المعالجة تجري على خوادم Hugging Face لا على جهازك؛ ومساحة التخزين مؤقتة —
+نزّل `book.md` بعد كل تحويل، فالنتائج تُمحى عند إعادة تشغيل الـSpace.
+
 ## التشغيل من هاتف أندرويد (عبر Google Colab)
 
 لا يمكن تشغيل PaddleOCR على الهاتف مباشرة، لكن يمكن تشغيله مجانًا على خوادم Colab من متصفح الهاتف:
