@@ -43,6 +43,9 @@ section { margin-bottom: 1.25rem; }
 .btn.primary { background: #1f6f54; border-color: #1f6f54; color: #fff; }
 .btn.primary:hover { background: #185943; }
 .btn[disabled] { opacity: .5; cursor: not-allowed; }
+.btn.danger { background: #fbeeec; border-color: #d9a79e; color: #a33a2a; }
+.btn.danger:hover { background: #f5ddd8; }
+#done-section .btn { display: block; text-align: center; margin: .5rem 0; width: 100%; }
 
 select {
   padding: .35rem .6rem;

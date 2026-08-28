@@ -117,6 +117,7 @@ async function poll() {
           : "اكتمل التحويل بنجاح ✓";
         $("output-dir").textContent = s.output_dir;
         $("download-link").href = `/api/result/${bookId}/book.md`;
+        $("zip-link").href = `/api/result/${bookId}/zip`;
         $("reader-link").href = `/reader/${encodeURIComponent(s.book_name)}`;
         loadBooks();
       } else {
@@ -127,6 +128,23 @@ async function poll() {
     /* transient polling errors are ignored */
   }
 }
+
+$("forget-btn").addEventListener("click", async () => {
+  if (!bookId) return;
+  if (!confirm("حذف الكتاب ونتائجه من الخادم نهائيًا؟ تأكد أنك نزّلت ملف ZIP أولًا.")) return;
+  try {
+    const res = await fetch(`/api/book/${bookId}`, { method: "DELETE" });
+    if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+    bookId = null;
+    $("done-section").hidden = true;
+    $("file-info").hidden = true;
+    $("progress-section").hidden = true;
+    $("pdf-input").value = "";
+    loadBooks();
+  } catch (err) {
+    showError("تعذر الحذف: " + err.message);
+  }
+});
 
 async function loadBooks() {
   try {
