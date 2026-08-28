@@ -5,6 +5,39 @@ const $ = (id) => document.getElementById(id);
 let bookId = null;
 let pollTimer = null;
 
+// countdown: ETA computed from the measured pages/second, ticking every second
+let convStart = null;
+let etaTarget = null;
+let tickTimer = null;
+
+function fmtDur(totalSec) {
+  const s = Math.max(0, Math.round(totalSec));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const two = (n) => String(n).padStart(2, "0");
+  return h ? `${h}:${two(m)}:${two(sec)}` : `${m}:${two(sec)}`;
+}
+
+function renderEta() {
+  const el = $("eta");
+  if (!el) return;
+  el.textContent = etaTarget === null ? "يُحسب..." : fmtDur((etaTarget - Date.now()) / 1000);
+}
+
+function startCountdown() {
+  convStart = Date.now();
+  etaTarget = null;
+  renderEta();
+  if (!tickTimer) tickTimer = setInterval(renderEta, 1000);
+}
+
+function stopCountdown() {
+  clearInterval(tickTimer);
+  tickTimer = null;
+  etaTarget = null;
+}
+
 function showError(msg) {
   $("error-text").textContent = msg;
   $("error-text").hidden = !msg;
@@ -87,6 +120,7 @@ $("start-btn").addEventListener("click", async () => {
     const res = await fetch(`/api/convert/${bookId}?lang=${lang}`, { method: "POST" });
     if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
     $("progress-section").hidden = false;
+    startCountdown();
     pollTimer = setInterval(poll, 1500);
   } catch (err) {
     $("start-btn").disabled = false;
@@ -106,8 +140,16 @@ async function poll() {
     $("status-text").textContent = s.message || s.state;
     $("engine-name").textContent = s.ocr_engine;
 
+    // re-anchor the countdown to the measured page rate on every poll
+    if (s.state === "running" && convStart && s.current_page > 0) {
+      const elapsed = (Date.now() - convStart) / 1000;
+      const remaining = (elapsed / s.current_page) * (s.page_count - s.current_page);
+      etaTarget = Date.now() + remaining * 1000;
+    }
+
     if (s.state === "done" || s.state === "failed") {
       clearInterval(pollTimer);
+      stopCountdown();
       $("start-btn").disabled = false;
       if (s.state === "done") {
         $("done-section").hidden = false;

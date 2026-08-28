@@ -31,9 +31,9 @@
     </section>
 
     <section id="progress-section" hidden>
-      <div class="field"><span class="label">التقدم:</span></div>
+      <div class="field"><span class="label">التقدم:</span> <span id="progress-count">0 / 0</span></div>
       <div class="bar"><div class="bar-fill" id="bar-fill"></div></div>
-      <div class="field"><span id="progress-count">0 / 0</span></div>
+      <div class="eta-chip">الوقت المتبقي تقريبًا: <span id="eta">يُحسب...</span></div>
       <div class="field"><span class="label">الحالة:</span> <span id="status-text"></span></div>
       <div class="field"><span class="label">محرك OCR:</span> <span id="engine-name"></span></div>
     </section>
@@ -53,6 +53,7 @@
     </section>
 
     <p class="error" id="error-text" hidden></p>
+    <footer class="tag">Arabic Book OCR — استخراج أمين، صفحةً صفحة</footer>
   </main>
   <script src="/static/app.js"></script>
 </body>

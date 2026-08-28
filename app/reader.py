@@ -15,12 +15,14 @@ _PAGE_TEMPLATE = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@400;700&display=swap');
 * {{ box-sizing: border-box; }}
 body {{
-  font-family: "Segoe UI", Tahoma, "Noto Naskh Arabic", serif;
-  background: #f4f1ea; color: #2b2b2b; margin: 0;
-  line-height: 2;
+  font-family: "Amiri", "Noto Naskh Arabic", "Segoe UI", serif;
+  background: #f3efe6; color: #23211c; margin: 0;
+  line-height: 2.15;
 }}
+.topbar {{ font-family: "Tajawal", "Segoe UI", sans-serif; }}
 .topbar {{
   position: sticky; top: 0; background: #fff;
   border-bottom: 1px solid #e0dbd0; padding: .6rem 1rem;
