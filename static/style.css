@@ -73,6 +73,7 @@ code {
 }
 
 .error { color: #a33a2a; font-weight: 600; }
+.upload-status { color: #1f6f54; font-weight: 600; margin: .75rem 0; }
 
 .books-title { font-size: 1rem; margin-bottom: .5rem; }
 #books-list { padding-inline-start: 1.2rem; }
