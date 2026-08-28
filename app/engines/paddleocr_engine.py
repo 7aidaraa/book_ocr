@@ -38,17 +38,29 @@ class PaddleOCREngine(OCREngine):
 
     def _load(self):
         if self._pipeline is None:
+            import os
+
+            # Work around a PaddlePaddle 3.x CPU bug: the oneDNN/PIR executor
+            # fails with "ConvertPirAttribute2RuntimeAttribute not support
+            # [pir::ArrayAttribute]" on some models. Disable oneDNN before
+            # paddle initializes; correctness over speed.
+            os.environ.setdefault("FLAGS_use_mkldnn", "0")
+
             from paddleocr import PPStructureV3
 
             # PP-StructureV3 handles layout detection + reading order;
             # recognition model follows the requested language.
-            self._pipeline = PPStructureV3(
+            kwargs = dict(
                 lang=self.lang,
                 use_doc_orientation_classify=True,
                 use_doc_unwarping=False,       # conservative: no aggressive rectification
                 use_table_recognition=True,
                 use_formula_recognition=False,  # not needed for MVP, saves a model
             )
+            try:
+                self._pipeline = PPStructureV3(enable_mkldnn=False, **kwargs)
+            except (TypeError, ValueError):  # signature without enable_mkldnn
+                self._pipeline = PPStructureV3(**kwargs)
         return self._pipeline
 
     def version(self) -> str:
