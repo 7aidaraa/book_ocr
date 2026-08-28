@@ -120,3 +120,21 @@ def test_reader_and_books_list(client, tmp_path):
 def test_reader_rejects_missing_and_traversal(client, tmp_path):
     assert client.get("/reader/غير-موجود").status_code == 404
     assert client.get("/reader/%2e%2e%2fetc").status_code == 404
+
+
+def test_zip_download_and_forget(client, tmp_path):
+    s = _convert_to_done(client, tmp_path)
+    assert s["state"] == "done"
+    book_id = s["book_id"]
+
+    z = client.get(f"/api/result/{book_id}/zip")
+    assert z.status_code == 200
+    assert z.headers["content-type"] == "application/zip"
+    assert len(z.content) > 500
+
+    d = client.delete(f"/api/book/{book_id}")
+    assert d.status_code == 200
+    # everything about the book is gone
+    assert client.get(f"/api/status/{book_id}").status_code == 404
+    assert client.get(f"/api/result/{book_id}/zip").status_code == 404
+    assert client.get("/api/books").json()["books"] == []

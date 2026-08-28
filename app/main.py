@@ -169,6 +169,38 @@ def result_book_md(book_id: str) -> FileResponse:
                         filename="book.md")
 
 
+@app.get("/api/result/{book_id}/zip")
+def result_zip(book_id: str) -> FileResponse:
+    """Whole output (book.md + pages/ + metadata.json) as one ZIP."""
+    job = _jobs.get(book_id)
+    if job is None or job["state"] != "done":
+        raise HTTPException(404, "الناتج غير جاهز")
+    out_dir = Path(job["output_dir"])
+    zip_base = out_dir.parent / f"{out_dir.name}"
+    zip_path = Path(shutil.make_archive(str(zip_base), "zip", out_dir))
+    return FileResponse(zip_path, media_type="application/zip",
+                        filename=f"{out_dir.name}.zip")
+
+
+@app.delete("/api/book/{book_id}")
+def delete_book(book_id: str) -> dict:
+    """Forget a converted book: remove its upload, output, zip, and job."""
+    job = _jobs.get(book_id)
+    if job is None:
+        raise HTTPException(404, "لا يوجد كتاب بهذا المعرف")
+    if job["state"] == "running":
+        raise HTTPException(409, "لا يمكن الحذف أثناء التحويل")
+    shutil.rmtree(Path(job["pdf_path"]).parent, ignore_errors=True)
+    if job["output_dir"]:
+        out_dir = Path(job["output_dir"])
+        shutil.rmtree(out_dir, ignore_errors=True)
+        (out_dir.parent / f"{out_dir.name}.zip").unlink(missing_ok=True)
+        shutil.rmtree(Path("data/work") / job["book_name"], ignore_errors=True)
+    with _jobs_lock:
+        _jobs.pop(book_id, None)
+    return {"deleted": book_id}
+
+
 def _safe_book_dir(book_name: str) -> Path:
     """Resolve a converted book's output dir; reject path tricks."""
     if not book_name or any(s in book_name for s in ("/", "\\", "..", "\0")):
