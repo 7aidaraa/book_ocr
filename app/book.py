@@ -42,6 +42,7 @@ def process_book(
     output_root: str | Path = OUTPUT_DIR,
     work_dir: str | Path | None = None,
     dpi: int = 300,
+    grayscale: bool = False,
     resume: bool = True,
     on_progress: Optional[ProgressCallback] = None,
 ) -> dict:
@@ -70,7 +71,8 @@ def process_book(
         report(page_number, f"OCR الصفحة {page_number}...")
         result, markdown = process_page(
             pdf_path, page_number, engine,
-            book_name=book_name, work_dir=work_dir, dpi=dpi,
+            book_name=book_name, work_dir=work_dir,
+            dpi=dpi, grayscale=grayscale,
         )
         page_file.write_text(markdown, encoding="utf-8")
 

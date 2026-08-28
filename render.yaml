@@ -9,5 +9,9 @@ services:
         value: tesseract
       - key: OCR_DPI
         value: "200"
+      - key: OCR_GRAYSCALE
+        value: "1"
+      - key: OMP_THREAD_LIMIT
+        value: "1"
       - key: PORT
         value: "8000"
