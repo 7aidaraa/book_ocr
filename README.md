@@ -25,29 +25,22 @@ python run.py
 
 ثم افتح: `http://127.0.0.1:8000`
 
-## نشر المنصة على رابط دائم (Hugging Face Spaces — مجاني)
+## المنصة برابط، من الهاتف، مجانًا (Google Colab)
 
-يعطيك رابطًا ثابتًا بواجهة كاملة تفتح من الهاتف بلا أي تثبيت.
-
-1. أنشئ Space جديدًا: <https://huggingface.co/new-space> — اختر **Docker ← Blank**، والرؤية **Private**.
-2. من تبويب **Files ← + Add file ← Create a new file**، سمِّ الملف `Dockerfile`، والصق فيه محتوى
-   [`deploy/hf-space-Dockerfile`](deploy/hf-space-Dockerfile) ثم **Commit**.
-3. انتظر البناء (~10 دقائق أول مرة) ← يفتح الرابط على واجهة المنصة.
-
-بعد أي تحديث هنا: **Settings ← Factory rebuild**.
-
-⚠ ملاحظتان: المعالجة تجري على خوادم Hugging Face لا على جهازك؛ ومساحة التخزين مؤقتة —
-نزّل `book.md` بعد كل تحويل، فالنتائج تُمحى عند إعادة تشغيل الـSpace.
-
-## التشغيل من هاتف أندرويد (عبر Google Colab)
-
-لا يمكن تشغيل PaddleOCR على الهاتف مباشرة، لكن يمكن تشغيله مجانًا على خوادم Colab من متصفح الهاتف:
+يشغّل المنصة كاملة على خوادم Colab ويعطيك رابطًا عامًا تفتحه من أي جهاز:
 
 1. افتح: <https://colab.research.google.com/github/7aidaraa/book_ocr/blob/main/colab/arabic_book_ocr.ipynb>
-2. سجّل دخول بحساب Google ← **Runtime ← Run all**.
-3. ارفع PDF عند الطلب ← انتظر ← ينزل ZIP فيه `book.md` وكل الصفحات.
+2. شغّل الخلايا الثلاث بالترتيب (زر ▶).
+3. الخلية الثالثة تطبع رابطًا مثل `https://xxxx.trycloudflare.com` — اضغطه لتفتح الواجهة.
 
-⚠ في هذا المسار يُعالَج الكتاب على خوادم Google، لا محليًا.
+⚠ اترك تبويب Colab مفتوحًا أثناء العمل؛ الرابط يتغيّر في كل تشغيل؛ والمعالجة على خوادم Google لا على جهازك.
+
+### عن الاستضافة الدائمة
+
+ملفا [`Dockerfile`](Dockerfile) و[`deploy/hf-space-Dockerfile`](deploy/hf-space-Dockerfile) جاهزان لأي
+استضافة تدعم الحاويات. لكن Hugging Face Spaces لم تعد تصلح مجانًا: أنواع Docker وGradio صارت
+تتطلب اشتراك PRO، والمجاني منها Static فقط (لا يشغّل بايثون). كذلك الخطط المجانية في Render
+وأمثالها (512MB ذاكرة) لا تكفي نماذج PaddleOCR.
 
 ## أسرع تشغيل على Windows (بلا أوامر)
 
