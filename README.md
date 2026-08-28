@@ -25,6 +25,16 @@ python run.py
 
 ثم افتح: `http://127.0.0.1:8000`
 
+## التشغيل من هاتف أندرويد (عبر Google Colab)
+
+لا يمكن تشغيل PaddleOCR على الهاتف مباشرة، لكن يمكن تشغيله مجانًا على خوادم Colab من متصفح الهاتف:
+
+1. افتح: <https://colab.research.google.com/github/7aidaraa/book_ocr/blob/main/colab/arabic_book_ocr.ipynb>
+2. سجّل دخول بحساب Google ← **Runtime ← Run all**.
+3. ارفع PDF عند الطلب ← انتظر ← ينزل ZIP فيه `book.md` وكل الصفحات.
+
+⚠ في هذا المسار يُعالَج الكتاب على خوادم Google، لا محليًا.
+
 ## أسرع تشغيل على Windows (بلا أوامر)
 
 1. ثبّت Python من python.org — فعّل خيار `Add python.exe to PATH` أثناء التثبيت (مرة واحدة).
