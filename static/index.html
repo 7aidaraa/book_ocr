@@ -58,6 +58,7 @@
 
     <section id="done-section" hidden>
       <p id="done-text"></p>
+      <p class="fail-reason" id="fail-reason" hidden></p>
       <p class="field"><span class="label">مجلد النتائج:</span> <code id="output-dir"></code></p>
       <a class="btn primary" id="zip-link" download>تنزيل الكتاب كاملًا (ZIP) ⬇</a>
       <a class="btn" id="reader-link" target="_blank">فتح القارئ 📖</a>
@@ -71,6 +72,8 @@
     </section>
 
     <p class="error" id="error-text" hidden></p>
+    <p><button class="btn subtle" id="selftest-btn">فحص سريع لمحرك OCR 🩺</button></p>
+    <pre class="selftest-out" id="selftest-out" hidden></pre>
     <footer class="tag">Arabic Book OCR — استخراج أمين، صفحةً صفحة</footer>
   </main>
   <script src="/static/app.js"></script>

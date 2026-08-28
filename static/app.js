@@ -154,9 +154,15 @@ async function poll() {
       if (s.state === "done") {
         $("done-section").hidden = false;
         const failed = s.failed_pages || [];
-        $("done-text").textContent = failed.length
-          ? `اكتمل التحويل مع فشل ${failed.length} صفحة: ${failed.join("، ")}`
-          : "اكتمل التحويل بنجاح ✓";
+        const total = s.page_count || 0;
+        $("done-text").textContent = !failed.length
+          ? "اكتمل التحويل بنجاح ✓"
+          : failed.length === total
+          ? `فشلت كل الصفحات (${total}) — المحرك لم يعمل`
+          : `اكتمل التحويل مع فشل ${failed.length} من ${total} صفحة`;
+        // show WHY, right here, instead of hiding it in the output files
+        $("fail-reason").hidden = !s.first_error;
+        if (s.first_error) $("fail-reason").textContent = "سبب الفشل: " + s.first_error;
         $("output-dir").textContent = s.output_dir;
         $("download-link").href = `/api/result/${bookId}/book.md`;
         $("zip-link").href = `/api/result/${bookId}/zip`;
@@ -185,6 +191,26 @@ $("forget-btn").addEventListener("click", async () => {
     loadBooks();
   } catch (err) {
     showError("تعذر الحذف: " + err.message);
+  }
+});
+
+$("selftest-btn").addEventListener("click", async () => {
+  const out = $("selftest-out");
+  out.hidden = false;
+  out.textContent = "جارٍ الفحص... (قد يستغرق دقيقة عند أول تحميل للنماذج)";
+  try {
+    const res = await fetch("/api/selftest");
+    const r = await res.json();
+    out.textContent = [
+      `المحرك: ${r.engine} ${r.engine_version || ""}`,
+      `المعالج: ${r.device}`,
+      r.ok ? "✓ المحرك يعمل" : "✗ المحرك لا يعمل",
+      r.text ? `النص المستخرج: ${r.text}` : "",
+      r.error ? `الخطأ: ${r.error}` : "",
+      r.traceback ? `\n${r.traceback}` : "",
+    ].filter(Boolean).join("\n");
+  } catch (err) {
+    out.textContent = "تعذر الفحص: " + err.message;
   }
 });
 

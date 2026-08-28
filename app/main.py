@@ -134,6 +134,7 @@ async def upload(file: UploadFile) -> dict:
             "failed_pages": [],
             "output_dir": None,
             "error": None,
+            "first_error": None,
         }
     return _jobs[book_id]
 
@@ -158,6 +159,10 @@ def _run_job(book_id: str, lang: str) -> None:
             on_progress=on_progress,
         )
         job["failed_pages"] = metadata["failed_pages"]
+        # surface why pages failed instead of making the user dig into files
+        job["first_error"] = next(
+            (p["error"] for p in metadata["pages"] if p.get("error")), None
+        )
         job["output_dir"] = str(OUTPUT_DIR / job["book_name"])
         job["state"] = "done"
         job["message"] = "اكتمل التحويل"
@@ -235,6 +240,64 @@ def delete_book(book_id: str) -> dict:
     with _jobs_lock:
         _jobs.pop(book_id, None)
     return {"deleted": book_id}
+
+
+@app.get("/api/selftest")
+def selftest() -> dict:
+    """Run OCR on one generated page — a 5-second engine health check.
+
+    Reports the real exception instead of making the user convert a whole
+    book to discover the engine is broken.
+    """
+    import tempfile
+    import traceback
+
+    import pymupdf
+
+    info: dict = {"engine": None, "engine_version": None, "device": None}
+    try:
+        import paddle  # noqa: F401
+
+        info["device"] = "gpu" if paddle.device.is_compiled_with_cuda() and \
+            paddle.device.cuda.device_count() > 0 else "cpu"
+    except Exception:
+        info["device"] = "cpu (no paddle)"
+
+    tmp = Path(tempfile.mkdtemp())
+    try:
+        doc = pymupdf.open()
+        page = doc.new_page(width=595, height=842)
+        page.insert_htmlbox(
+            pymupdf.Rect(50, 50, 545, 400),
+            '<div style="direction:rtl;font-size:22px">العلم نور يهتدي به الإنسان</div>',
+        )
+        pdf_path = tmp / "selftest.pdf"
+        doc.save(pdf_path)
+        doc.close()
+
+        engine = app.state.engine_factory("ar")  # type: ignore[attr-defined]
+        info["engine"] = engine.name
+        info["engine_version"] = engine.version()
+
+        from .pipeline import process_page
+
+        result, _ = process_page(
+            pdf_path, 1, engine, work_dir=tmp / "work",
+            dpi=int(_os.environ.get("OCR_DPI", "300")),
+            grayscale=_os.environ.get("OCR_GRAYSCALE", "0") == "1",
+        )
+        info["status"] = result.status
+        info["error"] = result.error
+        info["text"] = " ".join(b.text for b in result.ordered_blocks())[:300]
+        info["ok"] = result.status == "ok" and bool(info["text"].strip())
+    except Exception as exc:
+        info["ok"] = False
+        info["status"] = "error"
+        info["error"] = f"{type(exc).__name__}: {exc}"
+        info["traceback"] = traceback.format_exc()[-1500:]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return info
 
 
 def _safe_book_dir(book_name: str) -> Path:
