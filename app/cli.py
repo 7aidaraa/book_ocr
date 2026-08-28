@@ -19,11 +19,18 @@ def main() -> int:
     parser.add_argument("--dpi", type=int, default=300)
     parser.add_argument("--no-resume", action="store_true",
                         help="re-OCR pages even if already successful")
+    parser.add_argument("--engine", choices=["paddleocr", "tesseract"],
+                        default="paddleocr")
     args = parser.parse_args()
 
-    from .engines.paddleocr_engine import PaddleOCREngine
+    if args.engine == "tesseract":
+        from .engines.tesseract_engine import TesseractEngine
 
-    engine = PaddleOCREngine(lang="ar")
+        engine = TesseractEngine(lang="ar")
+    else:
+        from .engines.paddleocr_engine import PaddleOCREngine
+
+        engine = PaddleOCREngine(lang="ar")
 
     if args.page is not None:
         from .pipeline import process_page

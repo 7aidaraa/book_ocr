@@ -35,6 +35,17 @@ python run.py
 
 ⚠ اترك تبويب Colab مفتوحًا أثناء العمل؛ الرابط يتغيّر في كل تشغيل؛ والمعالجة على خوادم Google لا على جهازك.
 
+## رابط ثابت مجاني على Render (محرك Tesseract الخفيف)
+
+خطة Render المجانية (512MB) لا تكفي PaddleOCR، لكنها تكفي محرك Tesseract البديل —
+دقة أقل وسرعة أبطأ، مقابل رابط ثابت يعمل دائمًا:
+
+1. من لوحة Render: **New ← Blueprint** ← اربط مستودع `book_ocr` — يقرأ `render.yaml` تلقائيًا.
+2. أو: **New ← Web Service** ← اختر المستودع ← Runtime: **Docker** ← Dockerfile Path: `Dockerfile.render` ← Plan: **Free**.
+
+ملاحظات الخطة المجانية: الخدمة تنام بعد 15 دقيقة خمول (أول فتح بعدها يتأخر ~دقيقة)،
+والقرص مؤقت — نزّل `book.md` بعد كل تحويل.
+
 ### عن الاستضافة الدائمة
 
 ملفا [`Dockerfile`](Dockerfile) و[`deploy/hf-space-Dockerfile`](deploy/hf-space-Dockerfile) جاهزان لأي

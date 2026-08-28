@@ -1,0 +1,8 @@
+# Lightweight install for small hosts (Tesseract engine, no PaddleOCR).
+# Needs system packages: tesseract-ocr tesseract-ocr-ara
+pymupdf==1.28.2
+pytesseract==0.3.13
+fastapi==0.141.1
+uvicorn==0.52.3
+python-multipart==0.0.32
+markdown==3.10.3

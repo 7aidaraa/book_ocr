@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: book-ocr
+    runtime: docker
+    dockerfilePath: ./Dockerfile.render
+    plan: free
+    envVars:
+      - key: OCR_ENGINE
+        value: tesseract
+      - key: PORT
+        value: "8000"
