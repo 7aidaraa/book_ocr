@@ -106,13 +106,21 @@ async function processBook_(pdfFile, deadline) {
         pageMarkdown_(bookName, n, 'ok', text, null));
     } catch (e) {
       state.failed.push(n);
+      if (!state.firstError) state.firstError = String(e);
       writeFile_(pagesDir, pad3_(n) + '.md',
         pageMarkdown_(bookName, n, 'error', '', String(e)));
     }
     state.next = n + 1;
     saveState_(pdfFile, state);
     setStatus_(bookDir, 'قيد التحويل: صفحة ' + n + ' من ' + pageCount +
-      (state.failed.length ? ' — فشل ' + state.failed.length : ''));
+      (state.failed.length ? ' — فشل ' + state.failed.length : ''), state.firstError);
+
+    // كل الصفحات تفشل ⇒ عطل في المحرك لا في الكتاب: نتوقف بدل إحراق الحصة
+    if (state.failed.length >= 3 && state.failed.length === n) {
+      setStatus_(bookDir, '✗ توقّف: فشلت أول ' + n + ' صفحات — عطل في الإعداد لا في الكتاب.\n' +
+        'أصلح السبب أدناه ثم أعد وضع الملف في ' + INPUT_FOLDER, state.firstError);
+      return;
+    }
   }
 
   if (state.next <= pageCount) return; // نكمل في التشغيلة القادمة
@@ -132,27 +140,84 @@ async function processBook_(pdfFile, deadline) {
     failed_pages: state.failed,
   }, null, 2));
   setStatus_(bookDir, '✓ اكتمل: ' + pageCount + ' صفحة' +
-    (state.failed.length ? '، فشل منها: ' + state.failed.join('، ') : ''));
+    (state.failed.length ? '، فشل منها: ' + state.failed.join('، ') : ''),
+    state.firstError);
 
   pdfFile.moveTo(bookDir); // الأصل يُحفظ مع الناتج ولا يُمس
   PropertiesService.getScriptProperties().deleteProperty(stateKey_(pdfFile));
 }
 
-/** OCR لصفحة واحدة: PDF ← مستند Google (بمحرك OCR) ← نص ← حذف المؤقت. */
+/**
+ * OCR لصفحة واحدة: PDF ← مستند Google (بمحرك OCR) ← نص ← حذف المؤقت.
+ * يدعم خدمة Drive بإصدارَيها: v2 (insert) و v3 (create).
+ */
 function ocrPdfBytes_(bytes, tmpName) {
   var blob = Utilities.newBlob(bytes, 'application/pdf', tmpName + '.pdf');
-  var doc = Drive.Files.insert(
-    { title: 'tmp-ocr-' + tmpName, mimeType: 'application/vnd.google-apps.document' },
-    blob, { ocr: true, ocrLanguage: OCR_LANGUAGE });
+  var docId = driveConvertWithOcr_(blob, 'tmp-ocr-' + tmpName);
   try {
     var text = '';
-    for (var i = 0; i < 5; i++) { // المستند قد يتأخر لحظات
-      try { text = DocumentApp.openById(doc.id).getBody().getText(); break; }
-      catch (e) { Utilities.sleep(1500); }
+    var lastErr = null;
+    for (var i = 0; i < 6; i++) { // المستند قد يتأخر لحظات بعد التحويل
+      try { text = DocumentApp.openById(docId).getBody().getText(); lastErr = null; break; }
+      catch (e) { lastErr = e; Utilities.sleep(1500); }
     }
+    if (lastErr) throw lastErr;
     return text;
   } finally {
-    Drive.Files.trash(doc.id);
+    driveTrash_(docId);
+  }
+}
+
+function driveConvertWithOcr_(blob, title) {
+  var DOC_MIME = 'application/vnd.google-apps.document';
+  if (typeof Drive === 'undefined' || !Drive.Files) {
+    throw new Error('خدمة Drive غير مضافة: Services (+) ← Drive API');
+  }
+  if (Drive.Files.insert) { // v2
+    return Drive.Files.insert(
+      { title: title, mimeType: DOC_MIME }, blob,
+      { ocr: true, ocrLanguage: OCR_LANGUAGE }).id;
+  }
+  if (Drive.Files.create) { // v3
+    return Drive.Files.create(
+      { name: title, mimeType: DOC_MIME }, blob,
+      { ocrLanguage: OCR_LANGUAGE }).id;
+  }
+  throw new Error('نسخة Drive غير مدعومة (لا insert ولا create)');
+}
+
+function driveTrash_(fileId) {
+  try {
+    if (Drive.Files.trash) Drive.Files.trash(fileId);          // v2
+    else if (Drive.Files.update) Drive.Files.update({ trashed: true }, fileId); // v3
+    else DriveApp.getFileById(fileId).setTrashed(true);
+  } catch (e) { /* التنظيف ليس حرجًا */ }
+}
+
+/**
+ * فحص سريع: يحوّل صفحة واحدة من أول كتاب في مجلد الإدخال ويطبع النتيجة.
+ * شغّلها من المحرر عند حدوث فشل، وانظر السجل (Execution log).
+ */
+async function selfTest() {
+  var pdfFile = nextPdf_();
+  if (!pdfFile) { Logger.log('✗ لا يوجد PDF في مجلد ' + INPUT_FOLDER); return; }
+  Logger.log('الملف: ' + pdfFile.getName());
+  Logger.log('نسخة Drive: ' + (typeof Drive === 'undefined' ? 'غير مضافة'
+    : (Drive.Files && Drive.Files.insert ? 'v2' : (Drive.Files && Drive.Files.create ? 'v3' : 'مجهولة'))));
+  try {
+    var lib = getPdfLib_();
+    var srcDoc = await lib.PDFDocument.load(
+      new Uint8Array(pdfFile.getBlob().getBytes()), { ignoreEncryption: true });
+    Logger.log('✓ قراءة PDF: ' + srcDoc.getPageCount() + ' صفحة');
+    var single = await lib.PDFDocument.create();
+    var copied = await single.copyPages(srcDoc, [0]);
+    single.addPage(copied[0]);
+    var bytes = await single.save();
+    Logger.log('✓ استخراج الصفحة الأولى: ' + bytes.length + ' بايت');
+    var text = ocrPdfBytes_(bytes, 'selftest');
+    Logger.log('✓ OCR نجح. أول 300 حرف:\n' + text.slice(0, 300));
+  } catch (e) {
+    Logger.log('✗ فشل: ' + e + '\n' + (e.stack || ''));
   }
 }
 
@@ -210,8 +275,10 @@ function writeFile_(folder, name, content) {
   else folder.createFile(name, content, 'text/markdown');
 }
 
-function setStatus_(bookDir, msg) {
-  writeFile_(bookDir, 'الحالة.txt', msg + '\nآخر تحديث: ' + nowIso_());
+function setStatus_(bookDir, msg, firstError) {
+  writeFile_(bookDir, 'الحالة.txt', msg +
+    (firstError ? '\n\nسبب الفشل:\n' + firstError : '') +
+    '\n\nآخر تحديث: ' + nowIso_());
 }
 
 function pad3_(n) { return ('000' + n).slice(-3); }
