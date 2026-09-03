@@ -34,8 +34,9 @@ class CountingEngine(OCREngine):
         page = int(Path(image_path).parent.name)
         if page in self.fail_pages:
             raise RuntimeError(f"simulated failure on page {page}")
+        # confidence falls with page number: 0.9, 0.8, 0.6 — page 3 is "low"
         return [Block(type="text", bbox=[0, 0, 1, 1], reading_order=0,
-                      text=f"نص الصفحة {page}.")]
+                      text=f"نص الصفحة {page}.", confidence=1.0 - page * 0.1 - (0.1 if page == 3 else 0))]
 
     def version(self):
         return "0"
@@ -71,6 +72,29 @@ def test_process_book_output_structure(book_pdf, tmp_path):
 
     assert engine.calls == 3
     assert progress and progress[-1][2] == "اكتمل"
+
+
+def test_review_report_ranks_low_confidence_pages(book_pdf, tmp_path):
+    engine = CountingEngine()
+    metadata = process_book(
+        book_pdf, engine,
+        output_root=tmp_path / "out", work_dir=tmp_path / "work",
+    )
+    out = tmp_path / "out" / "كتاب-تجريبي"
+    report = (out / "مراجعة.md").read_text(encoding="utf-8")
+
+    # page 3 (0.6) is below the 0.70 threshold; pages 1 (0.9) and 2 (0.8) are not
+    assert metadata["quality"]["low_confidence_pages"] == [3]
+    assert "| 3 | 60% |" in report
+    assert "| 1 |" not in report and "| 2 |" not in report
+    assert metadata["quality"]["mean_confidence"] == round((0.9 + 0.8 + 0.6) / 3, 3)
+
+    # front matter carries the page's confidence, and resume recovers it
+    page3 = (out / "pages" / "003.md").read_text(encoding="utf-8")
+    assert "ocr_confidence: 0.6" in page3
+    again = process_book(book_pdf, CountingEngine(),
+                         output_root=tmp_path / "out", work_dir=tmp_path / "work")
+    assert again["quality"]["low_confidence_pages"] == [3]
 
 
 def test_process_book_failed_page_recorded_and_run_continues(book_pdf, tmp_path):

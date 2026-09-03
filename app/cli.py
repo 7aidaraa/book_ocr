@@ -19,8 +19,10 @@ def main() -> int:
     parser.add_argument("--dpi", type=int, default=300)
     parser.add_argument("--no-resume", action="store_true",
                         help="re-OCR pages even if already successful")
+    # Tesseract is the default after real-book testing: PaddleOCR's Arabic
+    # output drops inter-word spaces (upstream formatter bug), Tesseract keeps them.
     parser.add_argument("--engine", choices=["paddleocr", "tesseract"],
-                        default="paddleocr")
+                        default="tesseract")
     args = parser.parse_args()
 
     if args.engine == "tesseract":
