@@ -38,6 +38,16 @@ if not exist .venv (
   .venv\Scripts\python -m pip install --upgrade pip
   .venv\Scripts\python -m pip install -r requirements.txt || goto :fail
   type nul > .venv\INSTALLED_OK
+  copy /y requirements.txt .venv\requirements.installed >nul
+)
+
+rem requirements.txt changed since the last install (e.g. after updating the
+rem project from GitHub) -> install only what is new.
+fc requirements.txt .venv\requirements.installed >nul 2>nul
+if errorlevel 1 (
+  echo [i] Requirements changed - updating libraries... / تحديث المكتبات...
+  .venv\Scripts\python -m pip install -r requirements.txt || goto :fail
+  copy /y requirements.txt .venv\requirements.installed >nul
 )
 
 where tesseract >nul 2>nul
