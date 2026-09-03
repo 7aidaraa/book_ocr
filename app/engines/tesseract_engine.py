@@ -17,12 +17,20 @@ from .base import OCREngine
 class TesseractEngine(OCREngine):
     name = "tesseract"
 
-    def __init__(self, lang: str = "ar") -> None:
+    def __init__(self, lang: str = "ar", oem: int = 1) -> None:
         self.lang = lang
         # our API uses ISO codes; tesseract uses its own pack names
         self._tess_lang = {"ar": "ara", "en": "eng", "fa": "fas", "ur": "urd"}.get(
             lang, lang
         )
+        # oem=1: LSTM only. tessdata_best/tessdata_fast ship LSTM-only models;
+        # requesting the legacy+LSTM mix (default oem=3) on those either falls
+        # back silently or errors, so pin it explicitly. psm is left at
+        # tesseract's own default (3, auto page segmentation) — psm=6 ("single
+        # uniform block") was tried and rejected: it collapsed distinct
+        # paragraphs/poem/heading into one block, losing the blank-line
+        # separation between them (verified on the project's own fixture).
+        self._config = f"--oem {oem} -c preserve_interword_spaces=1"
 
     def version(self) -> str:
         try:
@@ -44,7 +52,8 @@ class TesseractEngine(OCREngine):
             os.environ.setdefault("OMP_THREAD_LIMIT", "1")
 
         data = pytesseract.image_to_data(
-            str(image_path), lang=self._tess_lang, output_type=Output.DICT
+            str(image_path), lang=self._tess_lang, output_type=Output.DICT,
+            config=self._config,
         )
 
         # group words -> lines -> paragraph blocks, keeping tesseract's order
