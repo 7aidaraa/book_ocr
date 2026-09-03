@@ -27,6 +27,14 @@ if errorlevel 1 (
   exit /b 1
 )
 
+rem pick up new requirements after a project update
+fc requirements.txt .venv\requirements.installed >nul 2>nul
+if errorlevel 1 (
+  echo [i] Requirements changed - updating libraries... / تحديث المكتبات...
+  .venv\Scripts\python -m pip install -r requirements.txt || (pause & exit /b 1)
+  copy /y requirements.txt .venv\requirements.installed >nul
+)
+
 set FAILED=0
 :next
 if "%~1"=="" goto :done
