@@ -40,10 +40,21 @@ if not exist .venv (
   type nul > .venv\INSTALLED_OK
 )
 
+where tesseract >nul 2>nul
+if errorlevel 1 (
+  echo.
+  echo [!] Tesseract not found on PATH. / Tesseract غير موجود.
+  echo     Install from https://github.com/UB-Mannheim/tesseract/wiki and add
+  echo     C:\Program Files\Tesseract-OCR to PATH, then re-run. See دليل-التشغيل.md
+  pause
+  exit /b 1
+)
+
 echo.
 echo [2/2] Starting server... / تشغيل الخادم...
 echo       Keep this window OPEN. / اترك هذه النافذة مفتوحة.
 echo.
+set OCR_ENGINE=tesseract
 start "" cmd /c "timeout /t 4 >nul & start http://127.0.0.1:8000"
 .venv\Scripts\python run.py
 pause

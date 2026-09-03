@@ -52,8 +52,16 @@ def render_page_body(page: PageResult) -> str:
     return "\n".join(lines) + "\n"
 
 
+def page_confidence(page: PageResult) -> float | None:
+    """Mean engine confidence over the page's blocks (0–1), or None if the
+    engine reports none. This is OCR self-confidence, NOT accuracy."""
+    confs = [b.confidence for b in page.blocks if b.confidence is not None]
+    return round(sum(confs) / len(confs), 3) if confs else None
+
+
 def render_page_markdown(page: PageResult, book_name: str) -> str:
     """Render one page to Markdown with front matter tying it to its source page."""
+    conf = page_confidence(page)
     front_matter = "\n".join(
         [
             "---",
@@ -62,6 +70,7 @@ def render_page_markdown(page: PageResult, book_name: str) -> str:
             f"source_page: {page.page_number}",
             f"printed_page: {page.printed_page if page.printed_page is not None else 'null'}",
             f"ocr_engine: {page.ocr_engine}",
+            f"ocr_confidence: {conf if conf is not None else 'null'}",
             f"status: {page.status}",
             "verified: false",
             "---",

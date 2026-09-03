@@ -44,13 +44,14 @@ _engine_lock = threading.Lock()
 def get_engine(lang: str):
     """Shared engine instance; models load once per process. Overridable in tests.
 
-    OCR_ENGINE=tesseract selects the lightweight engine (for small hosts);
-    default is paddleocr (PP-StructureV3).
+    OCR_ENGINE selects the engine. Default is tesseract: on real Arabic books
+    it keeps inter-word spaces, which PaddleOCR's formatter drops (upstream
+    bug, see دليل-التشغيل.md). OCR_ENGINE=paddleocr opts back in.
     """
     global _engine
     with _engine_lock:
         if _engine is None:
-            if _os.environ.get("OCR_ENGINE", "paddleocr").lower() == "tesseract":
+            if _os.environ.get("OCR_ENGINE", "tesseract").lower() == "tesseract":
                 from .engines.tesseract_engine import TesseractEngine
 
                 _engine = TesseractEngine(lang=lang)
