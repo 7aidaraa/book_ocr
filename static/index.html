@@ -29,6 +29,36 @@
       <p class="hub-note">أو حوّل مباشرة هنا بالأسفل — أبطأ، يناسب الكتيبات الصغيرة.</p>
     </section>
 
+    <section id="search-section" hidden>
+      <h2 class="section-title">🔎 ابحث عن كتاب</h2>
+      <div class="field">
+        <input type="text" id="book-query" placeholder="اسم الكتاب" autocomplete="off">
+      </div>
+      <div class="field">
+        <input type="text" id="book-author" placeholder="المؤلف (اختياري)" autocomplete="off">
+      </div>
+      <button class="btn primary" id="search-btn">بحث عن الكتاب</button>
+      <p class="search-note" id="search-note" hidden></p>
+      <ul id="search-results"></ul>
+    </section>
+
+    <section id="acquire-section" hidden>
+      <h2 class="section-title">تقدّم الجلب والتحويل</h2>
+      <div class="field"><span class="label">الكتاب:</span> <span id="acquire-title"></span></div>
+      <ol class="steps" id="acquire-steps">
+        <li data-step="found">العثور على الكتاب</li>
+        <li data-step="downloading">تنزيل الملف</li>
+        <li data-step="verified">التحقق من الملف</li>
+        <li data-step="processing">قراءة الصفحات (OCR)</li>
+        <li data-step="completed">بناء Markdown</li>
+      </ol>
+      <div class="bar"><div class="bar-fill" id="acquire-bar"></div></div>
+      <div class="field"><span class="label">الحالة:</span> <span id="acquire-status"></span></div>
+      <p class="error" id="acquire-error" hidden></p>
+      <a class="btn" id="acquire-reader" target="_blank" hidden>فتح القارئ 📖</a>
+      <button class="btn danger" id="acquire-cancel">إلغاء المهمة</button>
+    </section>
+
     <section id="pick-section">
       <label class="btn" for="pdf-input">اختيار ملف PDF</label>
       <input type="file" id="pdf-input" accept="application/pdf" hidden>

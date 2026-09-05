@@ -22,7 +22,13 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import pdf
+from .acquire import run_acquisition
 from .book import process_book
+from .booksources.base import BookCandidate
+from .booksources.cache import SearchCache
+from .booksources.registry import build_registry, enabled_sources
+from .booksources.resolver import parse_query, resolve
+from .jobs import JobStore
 from .reader import render_book_html
 
 INPUT_DIR = Path("data/input")
@@ -339,6 +345,131 @@ def reader(book_name: str) -> HTMLResponse:
     book_dir = _safe_book_dir(book_name)
     text = (book_dir / "book.md").read_text(encoding="utf-8")
     return HTMLResponse(render_book_html(text, book_name))
+
+
+# ---------------------------------------------------------------------------
+# Book discovery (optional layer). The upload flow above is untouched: both
+# paths converge on the same process_book() call.
+# ---------------------------------------------------------------------------
+
+_book_jobs = JobStore()
+_search_cache = SearchCache()
+# Candidates a user has actually been shown, so /acquire can never be handed
+# an arbitrary URL — it takes an id we issued, never a link.
+_offered: dict[str, tuple[str, BookCandidate]] = {}
+_offered_lock = threading.Lock()
+MAX_OFFERED = 500          # bounded: this is a hand-out list, not storage
+
+
+@app.get("/api/books/sources")
+def book_sources() -> dict:
+    """Every registered source and what has actually been verified about it."""
+    return {"sources": [entry.to_dict() for entry in build_registry()]}
+
+
+@app.post("/api/books/search")
+def book_search(data: dict = Body(...)) -> dict:
+    sources = enabled_sources()
+    if not sources:
+        raise HTTPException(
+            503,
+            "لا يوجد مصدر كتب مفعّل. المصادر الحقيقية لم يُتحقق منها بعد — "
+            "استخدم رفع PDF يدويًا.",
+        )
+    text = str(data.get("query", "")).strip()
+    if not text:
+        raise HTTPException(400, "اكتب اسم الكتاب")
+    if len(text) > 300:
+        raise HTTPException(400, "النص طويل جدًا")
+
+    query = parse_query(text, author=(data.get("author") or None))
+    cache_key = SearchCache.key(query.title, query.author, [s.id for s in sources])
+    cached = _search_cache.get(cache_key)
+    if cached is not None:
+        payload = cached
+    else:
+        payload = resolve(query, sources).to_dict()
+        _search_cache.put(cache_key, payload)
+
+    source_by_id = {s.id: s for s in sources}
+    with _offered_lock:
+        for item in payload["candidates"]:
+            candidate = BookCandidate(**item)
+            if candidate.source in source_by_id:
+                _offered[candidate.id] = (candidate.source, candidate)
+        while len(_offered) > MAX_OFFERED:
+            _offered.pop(next(iter(_offered)))
+    return payload
+
+
+@app.post("/api/books/acquire")
+def book_acquire(data: dict = Body(...), lang: str = "ar") -> dict:
+    """Start a background job: download -> verify -> existing OCR pipeline."""
+    if lang not in SUPPORTED_LANGS:
+        raise HTTPException(400, f"لغة غير مدعومة: {lang}")
+    candidate_id = str(data.get("candidate_id", ""))
+    with _offered_lock:
+        offer = _offered.get(candidate_id)
+    if offer is None:
+        raise HTTPException(404, "نتيجة غير معروفة — أعد البحث")
+
+    source_id, candidate = offer
+    source = next((s for s in enabled_sources() if s.id == source_id), None)
+    if source is None:
+        raise HTTPException(503, "المصدر لم يعد مفعّلًا")
+
+    book_name = _safe_book_name(candidate)
+    job = _book_jobs.create(
+        "acquire",
+        title=candidate.title,
+        author=candidate.author,
+        source=source_id,
+        book_name=book_name,
+        candidate=candidate.to_dict(),
+    )
+
+    def worker() -> None:
+        engine = app.state.engine_factory(lang)
+        run_acquisition(
+            _book_jobs, job["id"], source, candidate, engine,
+            output_root=OUTPUT_DIR, book_name=book_name,
+            dpi=int(_os.environ.get("OCR_DPI", "300")),
+            grayscale=_os.environ.get("OCR_GRAYSCALE", "0") == "1",
+        )
+
+    threading.Thread(target=worker, daemon=True).start()
+    return job
+
+
+@app.get("/api/books/jobs")
+def book_jobs() -> dict:
+    return {"jobs": _book_jobs.list(kinds=["acquire"])}
+
+
+@app.get("/api/books/jobs/{job_id}")
+def book_job(job_id: str) -> dict:
+    job = _book_jobs.get(job_id)
+    if job is None:
+        raise HTTPException(404, "لا توجد مهمة بهذا المعرف")
+    return job
+
+
+@app.post("/api/books/jobs/{job_id}/cancel")
+def book_job_cancel(job_id: str) -> dict:
+    try:
+        return _book_jobs.request_cancel(job_id)
+    except KeyError:
+        raise HTTPException(404, "لا توجد مهمة بهذا المعرف")
+
+
+def _safe_book_name(candidate: BookCandidate) -> str:
+    """A directory name derived from the title, never from a remote filename."""
+    parts = [candidate.title]
+    if candidate.volume:
+        parts.append(candidate.volume)
+    name = _re.sub(r"[^\w\u0600-\u06FF \-]", "", " - ".join(parts)).strip()
+    name = _re.sub(r"\s+", " ", name)[:80].strip(" .-")
+    return name or "book"
 
 
 @app.get("/")

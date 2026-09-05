@@ -248,3 +248,26 @@ footer.tag {
   margin-top: 1.6rem;
   letter-spacing: .04em;
 }
+
+/* ---- book search (discovery layer) ---- */
+.section-title { font-size: 1rem; margin: 0 0 .6rem; }
+#search-section input[type="text"] {
+  width: 100%; padding: .6rem .7rem; font: inherit;
+  border: 1px solid #cfd6dd; border-radius: 8px; background: #fff;
+}
+#search-results { list-style: none; padding: 0; margin: .8rem 0 0; }
+#search-results li {
+  border: 1px solid #e2e8f0; border-radius: 10px;
+  padding: .7rem .8rem; margin-bottom: .6rem; background: #fff;
+}
+#search-results .result-title { font-weight: 600; }
+#search-results .result-meta { font-size: .85rem; color: #5b6875; margin: .25rem 0 .5rem; }
+.search-note {
+  background: #fff8e1; border: 1px solid #f0d68a;
+  border-radius: 8px; padding: .55rem .7rem; font-size: .9rem;
+}
+.steps { padding-inline-start: 1.2rem; margin: .6rem 0; }
+.steps li { color: #8a94a0; padding: .15rem 0; }
+.steps li.active { color: #1a56db; font-weight: 600; }
+.steps li.done { color: #157347; }
+.steps li.done::marker { content: "✓ "; }

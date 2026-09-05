@@ -6,4 +6,7 @@ venv/
 data/input/
 data/work/
 data/output/
+data/jobs/
+data/cache/
+data/mock-library/
 .pytest_cache/

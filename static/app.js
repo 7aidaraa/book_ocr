@@ -266,3 +266,139 @@ async function refreshHub() {
     setInterval(refreshHub, 10000);
   } catch (_) { /* non-hub deployments just skip this */ }
 })();
+
+// ---- book discovery: search a source, then let the server do the rest.
+// The client never sends a URL — only an id the server itself issued.
+let acquireTimer = null;
+
+function stepState(job) {
+  const done = { found: true };
+  const stage = (job.progress && job.progress.stage) || job.state;
+  if (["downloading", "processing", "completed"].includes(stage)) done.downloading = true;
+  if (job.provenance) done.verified = true;
+  if (stage === "completed" || job.state === "completed") {
+    done.downloading = done.verified = done.processing = done.completed = true;
+  }
+  return { done, active: stage };
+}
+
+function renderAcquire(job) {
+  $("acquire-title").textContent = job.title || "";
+  const { done, active } = stepState(job);
+  document.querySelectorAll("#acquire-steps li").forEach((li) => {
+    const step = li.dataset.step;
+    li.classList.toggle("done", Boolean(done[step]));
+    li.classList.toggle("active", step === active && !done[step]);
+  });
+
+  const p = job.progress || {};
+  const pct = p.total ? Math.round((p.current / p.total) * 100) : 0;
+  $("acquire-bar").style.width = pct + "%";
+  $("acquire-status").textContent =
+    job.message + (p.total && p.stage === "processing" ? ` (${p.current}/${p.total})` : "");
+
+  $("acquire-error").hidden = !job.error;
+  if (job.error) $("acquire-error").textContent = job.error;
+
+  const finished = ["completed", "failed", "cancelled"].includes(job.state);
+  $("acquire-cancel").hidden = finished;
+  $("acquire-reader").hidden = job.state !== "completed";
+  if (job.state === "completed") {
+    $("acquire-reader").href = "/reader/" + encodeURIComponent(job.book_name);
+  }
+  return finished;
+}
+
+async function pollAcquire(jobId) {
+  const res = await fetch("/api/books/jobs/" + jobId);
+  if (!res.ok) return;
+  if (renderAcquire(await res.json())) clearInterval(acquireTimer);
+}
+
+async function acquire(candidateId, title) {
+  const res = await fetch("/api/books/acquire", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ candidate_id: candidateId }),
+  });
+  const job = await res.json();
+  if (!res.ok) { $("search-note").hidden = false; $("search-note").textContent = job.detail; return; }
+  $("acquire-section").hidden = false;
+  $("acquire-error").hidden = true;
+  job.title = job.title || title;
+  renderAcquire(job);
+  $("acquire-cancel").onclick = () =>
+    fetch(`/api/books/jobs/${job.id}/cancel`, { method: "POST" });
+  clearInterval(acquireTimer);
+  acquireTimer = setInterval(() => pollAcquire(job.id), 1500);
+}
+
+function renderResults(data) {
+  const list = $("search-results");
+  list.innerHTML = "";
+  $("search-note").hidden = !data.note;
+  if (data.note) $("search-note").textContent = data.note;
+
+  data.candidates.forEach((c) => {
+    const li = document.createElement("li");
+    const meta = [c.author, c.source, c.volume,
+                  c.pages ? c.pages + " صفحة" : null,
+                  "تطابق " + Math.round(c.confidence * 100) + "%"]
+      .filter(Boolean).join(" · ");
+    const title = document.createElement("div");
+    title.className = "result-title";
+    title.textContent = c.title;
+    const info = document.createElement("div");
+    info.className = "result-meta";
+    info.textContent = meta;
+    const button = document.createElement("button");
+    button.className = "btn primary";
+    button.textContent = data.needs_confirmation ? "اختيار" : "تحويل إلى Markdown";
+    button.onclick = () => acquire(c.id, c.title);
+    li.append(title, info, button);
+    list.appendChild(li);
+  });
+  if (!data.candidates.length && !data.note) {
+    $("search-note").hidden = false;
+    $("search-note").textContent = "لا نتائج.";
+  }
+}
+
+async function searchBooks() {
+  const query = $("book-query").value.trim();
+  if (!query) return;
+  $("search-btn").disabled = true;
+  $("search-results").innerHTML = "";
+  try {
+    const res = await fetch("/api/books/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, author: $("book-author").value.trim() || null }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      $("search-note").hidden = false;
+      $("search-note").textContent = data.detail;
+      return;
+    }
+    renderResults(data);
+  } finally {
+    $("search-btn").disabled = false;
+  }
+}
+
+// Show the search box only when a source is actually enabled. With every
+// real source still UNVERIFIED, the manual upload stays the only path.
+(async () => {
+  try {
+    const res = await fetch("/api/books/sources");
+    if (!res.ok) return;
+    const { sources } = await res.json();
+    if (!sources.some((s) => s.status.enabled)) return;
+    $("search-section").hidden = false;
+    $("search-btn").onclick = searchBooks;
+    $("book-query").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") searchBooks();
+    });
+  } catch (_) { /* the upload flow works regardless */ }
+})();
