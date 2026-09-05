@@ -6,6 +6,7 @@ Usage:
     python -m app.cli sources                       # book sources + status
     python -m app.cli search "شرح قطر الندى"        # search enabled sources
     python -m app.cli probe                         # re-check source reachability
+    python -m app.cli ocr-benchmark                 # compare OCR engines
 
 The PDF form is unchanged; the sub-commands are additive so no existing
 invocation breaks.
@@ -17,7 +18,7 @@ import argparse
 import sys
 
 
-SUBCOMMANDS = ("sources", "search", "probe")
+SUBCOMMANDS = ("sources", "search", "probe", "ocr-benchmark")
 
 
 def _cmd_sources() -> int:
@@ -82,6 +83,35 @@ def _cmd_probe() -> int:
     return exit_code
 
 
+def _cmd_benchmark(argv: list[str]) -> int:
+    """Compare OCR engines on identical pages. Writes benchmark.json + report.md."""
+    from scripts.ocr_benchmark import ENGINES, OUT_DIR, run
+
+    sub = argparse.ArgumentParser(prog="app.cli ocr-benchmark")
+    sub.add_argument("--engines", default=",".join(ENGINES),
+                     help="comma-separated engine names")
+    sub.add_argument("--dpi", type=int, default=200)
+    sub.add_argument("--pdf", default=None,
+                     help="benchmark a real book instead of the generated dataset; "
+                          "needs matching ground-truth files")
+    sub.add_argument("--out", default=str(OUT_DIR))
+    parsed = sub.parse_args(argv)
+
+    results = run(
+        engines=tuple(e.strip() for e in parsed.engines.split(",") if e.strip()),
+        dpi=parsed.dpi, out_dir=parsed.out, pdf_path=parsed.pdf,
+    )
+    for name, data in results["engines"].items():
+        if not data.get("available"):
+            print(f"{name:12} غير متاح — {data['reason']}", file=sys.stderr)
+            continue
+        print(f"{name:12} {data['seconds_per_page']} ث/صفحة · "
+              f"CER مطبَّع {data['cer_normalized']} · WER مطبَّع {data['wer_normalized']}",
+              file=sys.stderr)
+    print(f"\n{parsed.out}/report.md", file=sys.stderr)
+    return 0 if any(d.get("available") for d in results["engines"].values()) else 1
+
+
 def main() -> int:
     if len(sys.argv) > 1 and sys.argv[1] in SUBCOMMANDS:
         command = sys.argv[1]
@@ -89,6 +119,8 @@ def main() -> int:
             return _cmd_sources()
         if command == "probe":
             return _cmd_probe()
+        if command == "ocr-benchmark":
+            return _cmd_benchmark(sys.argv[2:])
         sub = argparse.ArgumentParser(prog="app.cli search")
         sub.add_argument("query")
         sub.add_argument("--author", default=None)

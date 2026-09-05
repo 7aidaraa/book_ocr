@@ -1,0 +1,16 @@
+# Surya OCR — evaluation only, installed into its OWN environment.
+#
+# Do NOT add these to requirements.txt. Two reasons, both measured:
+#   1. surya-ocr pulls torch + transformers (~2.5 GB installed).
+#   2. surya-ocr <0.18 pins pillow<11, which downgrades the pillow the main
+#      environment has. Keeping it separate leaves .venv untouched.
+#
+# The version is pinned deliberately: from 0.20 onward Surya routes
+# recognition through an external llama.cpp/vLLM inference server that pip
+# does not install, so a plain `pip install surya-ocr` ends in
+# "llama-server binary not found". 0.17.1 is the last pure-PyTorch release.
+surya-ocr==0.17.1
+
+# The benchmark itself needs the project's own PDF and Tesseract paths.
+pymupdf==1.28.2
+pytesseract==0.3.13

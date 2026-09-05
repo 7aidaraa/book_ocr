@@ -24,23 +24,27 @@ if not exist .venv\INSTALLED_OK (
   exit /b 1
 )
 
-.venv\Scripts\python -c "import surya" 2>nul
-if errorlevel 1 (
+if not exist .venv-surya\Scripts\python.exe (
   echo.
-  echo [1/2] Installing Surya ^(~2 GB, one time, several minutes^)...
-  echo       تثبيت Surya - مرة واحدة فقط، عدة دقائق. اترك النافذة مفتوحة.
+  echo [1/2] Creating a separate Surya environment ^(~2.5 GB, one time^)...
+  echo       بيئة منفصلة لـSurya - لا تمسّ .venv. عدة دقائق، اترك النافذة مفتوحة.
   echo.
-  .venv\Scripts\python -m pip install torch --index-url https://download.pytorch.org/whl/cpu || goto :fail
-  .venv\Scripts\python -m pip install surya-ocr || goto :fail
+  python -m venv .venv-surya || goto :fail
+  .venv-surya\Scripts\python -m pip install -q --upgrade pip
+  rem Pinned on purpose: surya-ocr >=0.20 needs an external llama-server
+  rem binary that pip does not install, so an unpinned install ends in
+  rem "llama-server binary not found". 0.17.1 is the last pure-PyTorch release.
+  .venv-surya\Scripts\python -m pip install -r requirements-surya.txt || goto :fail
 ) else (
-  echo [i] Surya already installed. / Surya مثبّت مسبقًا.
+  echo [i] Surya environment already present. / بيئة Surya موجودة مسبقًا.
 )
 
 echo.
 echo [2/2] Comparing pages 14, 50, 150, 300... / المقارنة جارية...
-echo       First run downloads Surya models ^(~1 GB^). / أول تشغيل ينزّل النماذج.
+echo       First run downloads Surya models ^(~1 GB^) from models.datalab.to
+echo       أول تشغيل ينزّل النماذج.
 echo.
-.venv\Scripts\python scripts\compare_surya.py "%BOOK%" 14 50 150 300 || goto :fail
+.venv-surya\Scripts\python scripts\compare_surya.py "%BOOK%" 14 50 150 300 || goto :fail
 
 start "" explorer "data\work\compare-surya"
 echo.
